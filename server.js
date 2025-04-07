@@ -22,9 +22,9 @@ let monsters = [
         "attack": "3000",
         "defense": "2500",
         "cardart": [
-            "blue-eyes-white-dragon2.jpg",
-            "blue-eyes-white-dragon3.jpg",
-            "blue-eyes-white-dragon4.jpg"
+            "images/blue-eyes-white-dragon2.jpg",
+            "images/blue-eyes-white-dragon3.jpg",
+            "images/blue-eyes-white-dragon4.jpg"
         ]
     },
     {
@@ -116,7 +116,7 @@ let monsters = [
         "attack": "1400",
         "defense": "1100",
         "cardart": [
-            "mystic-tomato2.webp"
+            "images/mystic-tomato2.webp"
         ]
     }
 ];
