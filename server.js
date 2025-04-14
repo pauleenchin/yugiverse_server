@@ -140,7 +140,7 @@ let forumPosts = [
     id: 2,
     title: "Can You Chain to Super Polymerization?",
     content: "Hey everyone, I’ve been getting mixed answers about Super Polymerization and whether or not it can be negated or chained to."
-  }
+  },
   {
     id: 3,
     title: "Which Archetype Deserves New Support?",
