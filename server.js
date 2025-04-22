@@ -2,11 +2,26 @@ const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
 const Joi = require("joi");
+const mongoose = require("mongoose");
+
 const app = express();
 
 app.use(express.static("public"));
 app.use(express.json());
 app.use(cors());
+
+mongoose
+  .connect("mongodb+srv://pchin:Mango@cluster0.gdldp1f.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
+  .then(() => console.log("Connected to MongoDB..."))
+  .catch((err) => console.error("Could not connect to MongoDB...", err));
+
+const forumSchema = new mongoose.Schema({
+  title: String,
+  content: String,
+  image: String
+});
+
+const Posts = mongoose.model("Post", forumSchema);
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -131,29 +146,6 @@ let monsters = [
   }
 ];
 
-let forumPosts = [
-  {
-    id: 1,
-    title: "Is Branded Despia Still Meta in 2025?",
-    content: "With the latest banlist changes and new support cards coming out, do you think Branded Despia is still a top-tier deck?",
-    image: null
-  },
-  {
-    id: 2,
-    title: "Can You Chain to Super Polymerization?",
-    content: "Hey everyone, I’ve been getting mixed answers about Super Polymerization and whether or not it can be negated or chained to.",
-    image: null
-  },
-  {
-    id: 3,
-    title: "Which Archetype Deserves New Support?",
-    content: "Hey! If Konami brought back a classic archetype, which would you choose — Blackwings, Infernities, Six Samurai?",
-    image: null
-  }
-];
-
-let nextId = 4;
-
 app.get("/", (req, res) => {
   res.sendFile(__dirname + "/index.html");
 });
@@ -162,11 +154,17 @@ app.get("/api/monsters", (req, res) => {
   res.send(monsters);
 });
 
-app.get("/api/forum-posts", (req, res) => {
-  res.send(forumPosts);
+app.get("/api/forum-posts", async (req, res) => {
+  try {
+    const posts = await Posts.find().sort({ _id: -1 });
+    res.json(posts);
+  } catch (err) {
+    console.error("Error fetching posts:", err.message);
+    res.status(500).send("Internal Server Error");
+  }
 });
 
-app.post("/api/forum-posts", upload.single("image"), (req, res) => {
+app.post("/api/forum-posts", upload.single("image"), async (req, res) => {
   try {
     const schema = Joi.object({
       title: Joi.string().min(3).required(),
@@ -177,26 +175,21 @@ app.post("/api/forum-posts", upload.single("image"), (req, res) => {
     const { error } = schema.validate({ title, content });
     if (error) return res.status(400).send(error.details[0].message);
 
-    const newPost = {
-      id: nextId++,
+    const newPost = new Posts({
       title,
       content,
       image: req.file ? `/images/${req.file.filename}` : null
-    };
+    });
 
-    forumPosts.unshift(newPost);
-    res.status(201).json(newPost);
+    const result = await newPost.save();
+    res.status(201).json(result);
   } catch (err) {
     console.error("Error posting forum discussion:", err.message);
     res.status(500).send("Internal Server Error");
   }
 });
 
-app.put("/api/forum-posts/:id", (req, res) => {
-  const postId = parseInt(req.params.id);
-  console.log("Looking for post ID:", postId);
-  console.log("Available IDs:", forumPosts.map(p => p.id));
-
+app.put("/api/forum-posts/:id", async (req, res) => {
   const schema = Joi.object({
     title: Joi.string().min(3).required(),
     content: Joi.string().min(10).required()
@@ -205,22 +198,33 @@ app.put("/api/forum-posts/:id", (req, res) => {
   const { error } = schema.validate(req.body);
   if (error) return res.status(400).send(error.details[0].message);
 
-  const post = forumPosts.find(p => p.id === postId);
-  if (!post) return res.status(404).send("Post not found");
+  try {
+    const updatedPost = await Posts.findByIdAndUpdate(
+      req.params.id,
+      {
+        title: req.body.title,
+        content: req.body.content
+      },
+      { new: true }
+    );
 
-  post.title = req.body.title;
-  post.content = req.body.content;
-
-  res.status(200).json(post);
+    if (!updatedPost) return res.status(404).send("Post not found");
+    res.status(200).json(updatedPost);
+  } catch (err) {
+    console.error("Error updating post:", err.message);
+    res.status(500).send("Internal Server Error");
+  }
 });
 
-app.delete("/api/forum-posts/:id", (req, res) => {
-  const postId = parseInt(req.params.id);
-  const index = forumPosts.findIndex(p => p.id === postId);
-  if (index === -1) return res.status(404).send("Post not found");
-
-  const deleted = forumPosts.splice(index, 1);
-  res.status(200).json(deleted[0]);
+app.delete("/api/forum-posts/:id", async (req, res) => {
+  try {
+    const deletedPost = await Posts.findByIdAndDelete(req.params.id);
+    if (!deletedPost) return res.status(404).send("Post not found");
+    res.status(200).json(deletedPost);
+  } catch (err) {
+    console.error("Error deleting post:", err.message);
+    res.status(500).send("Internal Server Error");
+  }
 });
 
 app.listen(3001, () => {
